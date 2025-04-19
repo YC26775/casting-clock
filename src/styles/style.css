@@ -1,0 +1,172 @@
+/* App container */
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header component */
+header {
+  background-color: #1a535c;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 2rem;
+}
+
+/* SiteSearch component */
+form {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+input[type='string'] {
+  padding: 8px 12px;
+  border: 2px solid #4ecdc4;
+  border-radius: 4px;
+  width: 250px;
+}
+
+button[type='submit'] {
+  background-color: #4ecdc4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button[type='submit']:hover {
+  background-color: #45b7af;
+}
+
+/* StationMap component */
+.map-container {
+  margin: 2rem auto;
+  border: 2px solid #1a535c;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Results component */
+.results {
+  background-color: #f7fff7;
+  border: 2px solid #1a535c;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 1rem 0;
+  position: relative;
+  display: flex;
+  gap: 2rem;
+}
+
+.streamResult,
+.weatherResult {
+  flex: 1;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.results h2 {
+  color: #1a535c;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.results ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.results li {
+  margin-bottom: 0.5rem;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* Delete button in Results */
+.results button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Footer component */
+footer {
+  background-color: #1a535c;
+  color: white;
+  text-align: center;
+  padding: 1rem;
+  margin-top: auto;
+}
+
+/* Loading message */
+.loading-message {
+  text-align: center;
+  color: #4ecdc4;
+  font-size: 1.2rem;
+  margin: 1rem 0;
+}
+
+/* Weather specific styles */
+.weather-description {
+  color: #4ecdc4;
+  font-weight: bold;
+}
+
+.wind-direction {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .results {
+    flex-direction: column;
+  }
+
+  .map-container {
+    width: 100%;
+    height: 300px;
+  }
+
+  input[type='string'] {
+    width: 100%;
+  }
+}
+
+/* Cluster markers */
+.custom-cluster {
+  background-color: #4ecdc4;
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
