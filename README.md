@@ -20,10 +20,16 @@
    ```
 
 2. **Install dependencies**
+
+   ```bash
    npm install
+   ```
 
 3. **Start the development server**
+
+   ```bash
    npm run dev
+   ```
 
 4. **Open in browser**  
    After starting the dev server, check your terminal for the local development URL (usually [http://localhost:5173] by default). Open that URL in your browser to start using the app.
