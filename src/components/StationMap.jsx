@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import '../styles/style.css';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import L from 'leaflet';
+import { FiMapPin } from 'react-icons/fi';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -16,6 +17,34 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+
+/*
+ * A flat amber teardrop with a near-black outline. The dark stroke keeps it
+ * readable on the pale USGS topo sheet, and the saturated fill keeps it
+ * readable on the dark satellite imagery.
+ */
+const stationPin = L.divIcon({
+  className: 'pin-marker',
+  html: `<svg viewBox="0 0 26 34" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M13 1.7c-5.7 0-10.3 4.6-10.3 10.3 0 7.5 8.9 19.2 10.3 21 1.4-1.8 10.3-13.5 10.3-21 0-5.7-4.6-10.3-10.3-10.3Z"
+        fill="#f5a524" stroke="#06181e" stroke-width="2.2" stroke-linejoin="round" />
+      <circle cx="13" cy="11.9" r="3.9" fill="#fff" stroke="#06181e" stroke-width="1.6" />
+    </svg>`,
+  iconSize: [26, 34],
+  iconAnchor: [13, 33],
+  popupAnchor: [0, -30],
+});
+
+const BASEMAPS = {
+  topo: {
+    label: 'Topo',
+    url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+  },
+  imagery: {
+    label: 'Imagery',
+    url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}',
+  },
+};
 
 function FitBounds({ stations }) {
   const map = useMap();
@@ -35,58 +64,108 @@ function FitBounds({ stations }) {
 
 function StationMap({ stations, onStationSelect }) {
   const [mapPosition, setMapPosition] = useState([37.8, -96.9]);
+  const [basemap, setBasemap] = useState('topo');
 
   return (
-    <div className="map-container">
-      <MapContainer
-        center={mapPosition}
-        zoom={4}
-        style={{ height: '400px', width: '500px' }}
-      >
-        <TileLayer url="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}" />
-        <FitBounds stations={stations} />
-        <MarkerClusterGroup
-          chunkedLoading
-          maxClusterRadius={50}
-          spiderfyOnMaxZoom={true}
-          showCoverageOnHover={false}
-          iconCreateFunction={(cluster) => {
-            return L.divIcon({
-              html: `<div class="custom-cluster">${cluster.getChildCount()}</div>`,
-              className: 'marker-cluster',
-              iconSize: L.point(40, 40),
-            });
-          }}
-        >
-          {stations.map((station) => (
-            <Marker
-              key={station.site_no}
-              position={[station.dec_lat_va, station.dec_long_va]}
-              eventHandlers={{
-                mouseover: (e) => e.target.openPopup(),
-                click: (e) => {
-                  e.target.openPopup();
-                },
-              }}
+    <div className="card map-card">
+      <div className="map-card__head">
+        <p className="map-card__label">
+          <FiMapPin aria-hidden="true" />
+          {stations.length > 0
+            ? `${stations.length.toLocaleString()} gauges on the map`
+            : 'No gauges loaded yet'}
+        </p>
+
+        <div className="seg" role="group" aria-label="Basemap style">
+          {Object.entries(BASEMAPS).map(([key, { label }]) => (
+            <button
+              key={key}
+              type="button"
+              className="seg__btn"
+              aria-pressed={basemap === key}
+              onClick={() => setBasemap(key)}
             >
-              <Popup>
-                <div className="station-popup">
-                  <h4>Station Name: {station.station_nm}</h4>
-                  <p>Station Number : {station.site_no}</p>
-                  <button
-                    onClick={() => {
-                      onStationSelect(station);
-                      console.log('station is selected.');
-                    }}
-                  >
-                    Fetch Data
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
+              {label}
+            </button>
           ))}
-        </MarkerClusterGroup>
-      </MapContainer>
+        </div>
+      </div>
+
+      <div className="map-frame">
+        <MapContainer center={mapPosition} zoom={4} scrollWheelZoom={true}>
+          <TileLayer
+            key={basemap}
+            url={BASEMAPS[basemap].url}
+            attribution="Tiles &copy; <a href='https://www.usgs.gov/'>USGS</a> The National Map"
+          />
+          <FitBounds stations={stations} />
+          <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={50}
+            spiderfyOnMaxZoom={true}
+            showCoverageOnHover={false}
+            iconCreateFunction={(cluster) => {
+              return L.divIcon({
+                html: `<div class="custom-cluster">${cluster.getChildCount()}</div>`,
+                className: 'marker-cluster',
+                iconSize: L.point(40, 40),
+              });
+            }}
+          >
+            {stations.map((station) => (
+              <Marker
+                key={station.site_no}
+                position={[station.dec_lat_va, station.dec_long_va]}
+                icon={stationPin}
+                eventHandlers={{
+                  mouseover: (e) => e.target.openPopup(),
+                  click: (e) => {
+                    e.target.openPopup();
+                  },
+                }}
+              >
+                <Popup>
+                  <div className="station-popup">
+                    <div>
+                      <p className="station-popup__name">
+                        {station.station_nm}
+                      </p>
+                      <p className="station-popup__meta">
+                        Gauge #{station.site_no}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn--sm"
+                      onClick={() => {
+                        onStationSelect(station);
+                        console.log('station is selected.');
+                      }}
+                    >
+                      Fetch Data
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MarkerClusterGroup>
+        </MapContainer>
+
+        {stations.length === 0 && (
+          <div className="map-overlay">
+            <div className="map-overlay__inner">
+              <span className="map-overlay__icon">
+                <FiMapPin />
+              </span>
+              <strong>Pick a state to begin</strong>
+              <p>
+                Search above, then click any pin and hit “Fetch Data” to pull its
+                flow and weather.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

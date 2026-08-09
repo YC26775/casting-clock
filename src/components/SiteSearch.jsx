@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
+import { FiAlertCircle, FiSearch } from 'react-icons/fi';
 
 function SiteSearch({ onSearch }) {
   const stateCodes = {
@@ -129,19 +130,63 @@ function SiteSearch({ onSearch }) {
     }
     return results;
   };
+
+  const titleCase = (name) =>
+    name.replace(/\b\w/g, (letter) => letter.toUpperCase());
+
   return (
-    <div>
-      <p>{error ? `Error: ${error}` : null}</p>
-      <form onSubmit={handleSubmit}>
+    <div className="search">
+      <form
+        className={`search__form${error ? ' search__form--error' : ''}`}
+        onSubmit={handleSubmit}
+      >
+        <span className="search__icon" aria-hidden="true">
+          <FiSearch />
+        </span>
+        <label className="sr-only" htmlFor="state-input">
+          Search gauges by state
+        </label>
         <input
+          id="state-input"
+          className="search__input"
           name="state"
           type="string"
+          list="state-options"
+          autoComplete="off"
           onChange={handleChange}
           value={state}
-          placeholder="Enter the state here"
+          placeholder="Search a state — try “Montana”"
+          aria-invalid={error ? 'true' : 'false'}
         />
-        <button type="submit">Search</button>
+        <datalist id="state-options">
+          {Object.keys(stateCodes).map((name) => (
+            <option key={name} value={titleCase(name)} />
+          ))}
+        </datalist>
+        <button className="btn" type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <span className="spinner" aria-hidden="true" />
+              Searching
+            </>
+          ) : (
+            'Find gauges'
+          )}
+        </button>
       </form>
+
+      <div className="search__foot" role="status" aria-live="polite">
+        {error ? (
+          <p className="search__error">
+            <FiAlertCircle aria-hidden="true" />
+            {error}
+          </p>
+        ) : (
+          <p className="search__hint">
+            Every USGS stream gauge in the state lands on the map below.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

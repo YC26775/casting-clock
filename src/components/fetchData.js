@@ -102,35 +102,46 @@ export async function fetchData(sta, lat, long) {
     return results;
   }
 
+  /**
+   * Mean of one USGS parameter over the requested window, or null when the
+   * gauge does not report it. Not every station carries every sensor.
+   */
+  function seriesMean(object, variableCode) {
+    const series = object?.value?.timeSeries?.find(
+      (ts) => ts.variable?.variableCode?.[0]?.value === variableCode
+    );
+
+    const values = series?.values?.[0]?.value
+      ?.map((v) => Number(v.value))
+      // USGS sends -999999 for gaps (ice-affected readings, sensor outages)
+      .filter((v) => !isNaN(v) && v > -999998);
+
+    return values?.length > 0 ? calculateAverage(values) : null;
+  }
+
   function currentStreamDataCalc(object) {
-    let past1HourFlowValueMean = '--';
-    let past1HourHeightValueMean = '--';
-    const flowSeries = object?.value?.timeSeries?.find(
-      (ts) => ts.variable?.variableCode?.[0]?.value === '00060' // USGS parameter code for discharge
-    );
+    const flow = seriesMean(object, '00060'); // discharge, cfs
+    const height = seriesMean(object, '00065'); // gage height, ft
 
-    if (flowSeries?.values?.[0]?.value) {
-      const flowValues = flowSeries.values[0].value
-        .map((v) => Number(v.value))
-        .filter((v) => !isNaN(v));
-      past1HourFlowValueMean =
-        flowValues.length > 0 ? calculateAverage(flowValues).toFixed(2) : '--';
+    // Most gauges with a thermistor report 00010 (°C); a few report 00011 (°F).
+    let waterTempC = seriesMean(object, '00010');
+    let waterTempF = seriesMean(object, '00011');
+
+    if (waterTempC === null && waterTempF !== null) {
+      waterTempC = (waterTempF - 32) * (5 / 9);
+    } else if (waterTempF === null && waterTempC !== null) {
+      waterTempF = waterTempC * (9 / 5) + 32;
     }
 
-    const heightSeries = object?.value?.timeSeries?.find(
-      (ts) => ts.variable?.variableCode?.[0]?.value === '00065' // USGS parameter code for gage height
-    );
-    if (heightSeries?.values?.[0]?.value) {
-      const heightValues = heightSeries.values[0].value
-        .map((v) => Number(v.value))
-        .filter((v) => !isNaN(v));
-      past1HourHeightValueMean =
-        heightValues.length > 0
-          ? calculateAverage(heightValues).toFixed(2)
-          : '--';
-    }
+    const round = (value, digits) =>
+      value === null ? '--' : value.toFixed(digits);
 
-    return [past1HourFlowValueMean, past1HourHeightValueMean];
+    return [
+      round(flow, 2),
+      round(height, 2),
+      round(waterTempF, 1),
+      round(waterTempC, 1),
+    ];
   }
 
   function seasonalStreamDataCalc(array) {
