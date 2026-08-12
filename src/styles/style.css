@@ -19,8 +19,6 @@
 
   /* Semantic tokens — light */
   --bg: #eef4f5;
-  --bg-tint-a: rgba(47, 214, 195, 0.18);
-  --bg-tint-b: rgba(18, 115, 168, 0.14);
   --surface: #ffffff;
   --surface-2: #f5f9fa;
   --surface-3: #eaf2f3;
@@ -41,7 +39,6 @@
   --shadow-md: 0 2px 4px rgba(8, 34, 42, 0.05),
     0 12px 28px -10px rgba(8, 34, 42, 0.22);
   --shadow-lg: 0 30px 60px -24px rgba(8, 34, 42, 0.35);
-  --header-bg: rgba(255, 255, 255, 0.72);
 
   /* Shape & motion */
   --r-xs: 8px;
@@ -60,8 +57,6 @@
 
 :root[data-theme='dark'] {
   --bg: #061418;
-  --bg-tint-a: rgba(47, 214, 195, 0.14);
-  --bg-tint-b: rgba(18, 115, 168, 0.2);
   --surface: #0e2027;
   --surface-2: #12272f;
   --surface-3: #17313a;
@@ -81,7 +76,6 @@
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.35),
     0 16px 34px -14px rgba(0, 0, 0, 0.7);
   --shadow-lg: 0 34px 70px -28px rgba(0, 0, 0, 0.8);
-  --header-bg: rgba(9, 26, 32, 0.72);
 }
 
 /* --------------------------------------------------------------------------
@@ -94,14 +88,20 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
-  scroll-padding-top: 92px;
 }
 
 body {
   margin: 0;
+  /* The map is the whole app now — nothing behind it should ever scroll. */
+  overflow: hidden;
+  overscroll-behavior: none;
   font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.55;
@@ -109,26 +109,6 @@ body {
   background-color: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Ambient water-light backdrop */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-      68rem 40rem at 12% -10%,
-      var(--bg-tint-a),
-      transparent 60%
-    ),
-    radial-gradient(56rem 36rem at 92% 4%, var(--bg-tint-b), transparent 62%),
-    radial-gradient(
-      70rem 50rem at 50% 108%,
-      var(--bg-tint-a),
-      transparent 65%
-    );
 }
 
 h1,
@@ -185,136 +165,86 @@ button {
 }
 
 /* --------------------------------------------------------------------------
-   Shell & layout
+   App shell — the map fills the whole viewport; everything else floats
+   above it, Google-Maps style.
    -------------------------------------------------------------------------- */
 
 .app-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Floating brand + search, top-left. The row itself ignores pointer events
+   so clicks in the empty middle fall through to the map; the pieces inside
+   opt back in. */
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
   display: flex;
-  flex-direction: column;
-}
-
-.wrap {
-  width: 100%;
-  max-width: 1180px;
-  margin-inline: auto;
-  padding-inline: clamp(16px, 4vw, 32px);
-}
-
-.main {
-  flex: 1;
-  padding-bottom: clamp(48px, 8vw, 96px);
-}
-
-.section {
-  margin-top: clamp(36px, 6vw, 64px);
-}
-
-.section__head {
-  display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
+  padding: 16px;
+  pointer-events: none;
 }
 
-.section__title {
+.hud__left {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(380px, calc(100vw - 32px));
+}
+
+.hud__left > * {
+  pointer-events: auto;
+}
+
+.hud__right {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.brand-chip {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  padding: 6px 16px 6px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
-.section__title svg {
-  color: var(--brand);
-  flex: none;
-}
-
-.section__hint {
-  color: var(--text-3);
-  font-size: 0.875rem;
+.brand-chip__name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------------------------
-   Navigation
+   Shared bits: brand mark, buttons, icon buttons, chips
    -------------------------------------------------------------------------- */
 
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 1200;
-  background: var(--header-bg);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid var(--border);
-}
-
-.nav__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  height: 68px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
 .brand__mark {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  font-size: 1.05rem;
+  border-radius: 11px;
+  font-size: 1rem;
   color: var(--brand-ink);
   background: linear-gradient(140deg, var(--teal-400), var(--teal-600) 65%,
       #1273a8);
   box-shadow: 0 6px 16px -6px var(--teal-500);
-}
-
-.brand__name {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.14rem;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.brand__tag {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-3);
-}
-
-.nav__right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.nav__link {
-  padding: 8px 14px;
-  border-radius: var(--r-pill);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-2);
-  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-
-.nav__link:hover {
-  background: var(--surface-3);
-  color: var(--text);
 }
 
 .icon-btn {
@@ -327,6 +257,7 @@ button {
   border-radius: var(--r-pill);
   background: var(--surface);
   color: var(--text-2);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: transform var(--dur) var(--ease), color var(--dur) var(--ease),
     border-color var(--dur) var(--ease), background var(--dur) var(--ease);
@@ -342,100 +273,10 @@ button {
   transform: translateY(0) scale(0.96);
 }
 
-.icon-btn--ghost {
-  background: transparent;
-}
-
 .icon-btn--danger:hover {
   color: var(--danger);
   border-color: var(--danger);
   background: color-mix(in srgb, var(--danger) 10%, transparent);
-}
-
-/* --------------------------------------------------------------------------
-   Hero
-   -------------------------------------------------------------------------- */
-
-.hero {
-  position: relative;
-  text-align: center;
-  /* Block-only, so .wrap keeps supplying the inline gutters. */
-  padding-block: clamp(48px, 9vw, 96px) clamp(28px, 4vw, 44px);
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-pill);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-2);
-}
-
-.eyebrow__dot {
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--brand) 16%, transparent);
-  color: var(--brand);
-  font-size: 0.7rem;
-}
-
-.hero__title {
-  margin: 20px auto 0;
-  max-width: 15ch;
-  font-size: clamp(2.4rem, 7vw, 4.25rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-}
-
-.hero__title em {
-  font-style: normal;
-  background: linear-gradient(
-    100deg,
-    var(--teal-500) 0%,
-    #1273a8 45%,
-    var(--accent) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-:root[data-theme='dark'] .hero__title em {
-  background: linear-gradient(
-    100deg,
-    var(--teal-300) 0%,
-    #7cc4f0 48%,
-    var(--amber-400) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-.hero__lede {
-  margin: 18px auto 0;
-  max-width: 56ch;
-  font-size: clamp(1rem, 1.7vw, 1.14rem);
-  color: var(--text-2);
-}
-
-.hero__chips {
-  list-style: none;
-  margin: 26px 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
 }
 
 .chip {
@@ -461,13 +302,17 @@ button {
   letter-spacing: 0.04em;
 }
 
+.hint-text {
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
 /* --------------------------------------------------------------------------
    Search
    -------------------------------------------------------------------------- */
 
 .search {
-  margin: 30px auto 0;
-  max-width: 620px;
+  width: 100%;
 }
 
 .search__form {
@@ -581,10 +426,9 @@ button {
 }
 
 .search__foot {
-  min-height: 26px;
-  margin-top: 10px;
-  display: flex;
-  justify-content: center;
+  min-height: 22px;
+  margin-top: 8px;
+  padding-left: 6px;
 }
 
 .search__error {
@@ -596,7 +440,9 @@ button {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   animation: shake 0.35s var(--ease);
 }
 
@@ -614,8 +460,15 @@ button {
 }
 
 .search__hint {
-  font-size: 0.82rem;
-  color: var(--text-3);
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: var(--r-pill);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 /* --------------------------------------------------------------------------
@@ -630,94 +483,75 @@ button {
 }
 
 /* --------------------------------------------------------------------------
-   Map
+   Map — full-bleed canvas behind everything
    -------------------------------------------------------------------------- */
 
-.map-card {
-  overflow: hidden;
-}
-
-.map-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
-}
-
-.map-card__label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-2);
-}
-
-.map-card__label svg {
-  color: var(--brand);
-}
-
-.seg {
-  display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  border-radius: var(--r-pill);
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-}
-
-.seg__btn {
-  padding: 6px 14px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: transparent;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: color var(--dur) var(--ease), background var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
-}
-
-.seg__btn:hover {
-  color: var(--text);
-}
-
-.seg__btn[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--brand);
-  box-shadow: var(--shadow-sm);
-}
-
-.map-frame {
-  position: relative;
-  /* Contains Leaflet's own z-index scale (it goes up to 1000). */
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  /* Contains Leaflet's own z-index scale (it climbs past 1000 for popups),
+     so floating chrome outside this element just needs any z-index to win. */
   isolation: isolate;
-  height: clamp(340px, 52vh, 520px);
 }
 
-.map-frame .leaflet-container {
+.map-canvas .leaflet-container {
   height: 100%;
   width: 100%;
   background: var(--surface-3);
   font-family: var(--font-ui);
 }
 
+.map-controls {
+  position: fixed;
+  left: 20px;
+  top: 190px;
+  z-index: 400;
+  pointer-events: auto;
+}
+
+.seg {
+  display: inline-flex;
+  padding: 6px;
+  gap: 3px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 2px solid var(--text-2);
+  box-shadow: 0 6px 20px rgba(8, 34, 42, 0.4);
+}
+
+.seg__btn {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+
+.seg__btn:hover {
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.seg__btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  color: var(--brand);
+  font-weight: 800;
+}
+
 .map-overlay {
   position: absolute;
   inset: 0;
-  z-index: 1100;
+  z-index: 5;
   display: grid;
   place-items: center;
   padding: 24px;
   text-align: center;
   pointer-events: none;
-  background: color-mix(in srgb, var(--surface) 62%, transparent);
-  backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--surface) 30%, transparent);
 }
 
 .map-overlay__inner {
@@ -729,7 +563,8 @@ button {
   border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  margin-top: 96px;
 }
 
 .map-overlay__icon {
@@ -834,12 +669,13 @@ button {
   transition: transform var(--dur) var(--ease);
 }
 
+/* A subtle hover grow for affordance — the info popup itself only opens on
+   click (see StationMap.jsx), so hovering never pops up unwanted detail. */
 .pin-marker:hover svg,
 .pin-marker:focus-visible svg {
   transform: scale(1.2);
 }
 
-/* Lift the hovered pin above its neighbours so it is never half-hidden. */
 .pin-marker:hover {
   z-index: 650 !important;
 }
@@ -866,12 +702,71 @@ button {
 }
 
 /* --------------------------------------------------------------------------
-   Readings
+   Readings panel — floats on the right, independently scrollable, and only
+   exists while there is something to show.
    -------------------------------------------------------------------------- */
+
+.readings-panel {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 15;
+  width: min(800px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  animation: slide-in 0.28s var(--ease) both;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+.readings-panel__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  /* The info + theme toggle buttons float above this panel at top-right
+     (see .hud) — reserve clearance so its content never runs under them. */
+  padding-right: 112px;
+  border-bottom: 1px solid var(--border);
+}
+
+.readings-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+}
+
+.readings-panel__title svg {
+  color: var(--brand);
+}
+
+.readings-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px 28px;
+  /* A step darker than the white cards it holds, so each reading's edges
+     read clearly instead of blending into the panel. */
+  background: var(--surface-2);
+  /* Lets .reading__body switch to a side-by-side layout once there is
+     actually enough room, regardless of viewport size. */
+  container-type: inline-size;
+}
 
 .readings {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .reading {
@@ -932,9 +827,19 @@ button {
   margin-top: 8px;
 }
 
+/* Streamflow and weather stack by default, and sit side by side once the
+   panel is wide enough to fit both — driven by the panel's actual width via
+   a container query, not the viewport, since the panel can be a sidebar or
+   a full-width bottom sheet. */
 .reading__body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
+}
+
+@container (min-width: 560px) {
+  .reading__body {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .panel {
@@ -945,8 +850,15 @@ button {
 }
 
 .panel + .panel {
-  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   background: var(--surface-2);
+}
+
+@container (min-width: 560px) {
+  .panel + .panel {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
 }
 
 .panel__title {
@@ -970,7 +882,7 @@ button {
 /* Two tiles normally, three when the gauge also reports water temperature. */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 
@@ -1001,7 +913,7 @@ button {
   gap: 0 5px;
   margin-top: 6px;
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 3.4vw, 1.85rem);
+  font-size: clamp(1.4rem, 3.4vw, 1.7rem);
   font-weight: 700;
   letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
@@ -1088,7 +1000,7 @@ button {
 
 .wx__icon {
   flex: none;
-  font-size: 3rem;
+  font-size: 2.6rem;
   line-height: 1;
   color: var(--accent);
   filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 45%, transparent));
@@ -1098,7 +1010,7 @@ button {
   display: flex;
   align-items: flex-start;
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 4.4vw, 2.4rem);
+  font-size: clamp(1.7rem, 4.4vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -1126,7 +1038,7 @@ button {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(122px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 10px;
 }
 
@@ -1189,11 +1101,10 @@ button {
   display: grid;
   justify-items: center;
   gap: 10px;
-  padding: clamp(38px, 7vw, 64px) 24px;
+  padding: clamp(30px, 7vw, 48px) 20px;
   text-align: center;
   border: 1px dashed var(--border-strong);
   border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--surface) 55%, transparent);
 }
 
 .empty__icon {
@@ -1212,7 +1123,7 @@ button {
 }
 
 .empty p {
-  max-width: 42ch;
+  max-width: 34ch;
   color: var(--text-3);
   font-size: 0.9rem;
 }
@@ -1274,58 +1185,103 @@ button {
 .loading-banner {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 16px;
+  gap: 8px;
+  padding: 6px 14px;
   border-radius: var(--r-pill);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--brand);
   background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 /* --------------------------------------------------------------------------
-   Footer
+   Info dialog — the "about" popup opened from the HUD, carrying the site
+   description and what used to be the page footer.
    -------------------------------------------------------------------------- */
 
-.footer {
-  margin-top: auto;
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--deep-900) 55%, transparent);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.18s var(--ease) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(90vh, 700px);
+  overflow-y: auto;
+  padding: 28px 26px 26px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  animation: modal-in 0.22s var(--ease) both;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+.modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.modal__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 40px;
+}
+
+.modal__brand h2 {
+  font-size: 1.3rem;
+}
+
+.modal__lede {
+  margin-top: 16px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+
+.modal__footer {
+  margin-top: 22px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  backdrop-filter: blur(8px);
-}
-
-.footer__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 28px;
-  flex-wrap: wrap;
-  padding-block: 26px;
-}
-
-.footer__brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--font-display);
-  font-weight: 700;
-}
-
-.footer__brand svg {
-  color: var(--brand);
+  display: grid;
+  gap: 10px;
 }
 
 .footer__note {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text-3);
 }
 
 .footer__links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   flex-wrap: wrap;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .footer__links a {
@@ -1334,6 +1290,8 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .footer__links a:hover {
@@ -1344,31 +1302,48 @@ button {
    Responsive
    -------------------------------------------------------------------------- */
 
-@media (max-width: 860px) {
-  .reading__body {
-    grid-template-columns: 1fr;
-  }
-
-  .panel + .panel {
+@media (max-width: 1100px) {
+  /* An 800px sidebar has no business on a laptop-width screen — the panel
+     becomes a bottom sheet instead, so the map stays reachable above it. */
+  .readings-panel {
+    inset: auto 0 0 0;
+    width: auto;
+    height: min(58vh, 560px);
     border-left: 0;
     border-top: 1px solid var(--border);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+
+  .readings-panel::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    border-radius: var(--r-pill);
+    background: var(--border-strong);
+    transform: translateX(-50%);
+  }
+
+  .map-controls {
+    left: auto;
+    right: 16px;
+    bottom: auto;
+    top: 66px;
   }
 }
 
 @media (max-width: 640px) {
-  html {
-    scroll-padding-top: 76px;
+  .hud {
+    padding: 12px;
   }
 
-  .nav__inner {
-    height: 60px;
+  .hud__left {
+    width: calc(100vw - 24px);
   }
 
-  .nav__link {
-    display: none;
-  }
-
-  .brand__tag {
+  .brand-chip__name {
     display: none;
   }
 
@@ -1395,8 +1370,11 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .map-card__head {
-    justify-content: center;
+  /* Below this width the search box in .hud__left goes near full-bleed and
+     would sit on top of the basemap toggle — drop the secondary control
+     rather than fight it for space. */
+  .map-controls {
+    display: none;
   }
 }
 
@@ -1407,6 +1385,5 @@ button {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
 }

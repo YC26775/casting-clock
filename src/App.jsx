@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
-import { FaFish } from 'react-icons/fa';
-import { FiClock, FiMap, FiSunrise, FiTrendingUp } from 'react-icons/fi';
+import { FiTrendingUp } from 'react-icons/fi';
 import Header from './components/Header';
-import Footer from './components/Footer';
 import { fetchData } from './components/fetchData.js';
 import Results from './components/Results';
-import SiteSearch from './components/SiteSearch';
 import SkeletonReading from './components/SkeletonReading';
 import StationMap from './components/StationMap';
 function App() {
@@ -74,131 +71,75 @@ function App() {
       return prevList.filter((item) => item.id !== itemId);
     });
   };
+
+  // The readings panel only exists while there is something to show — the
+  // map otherwise keeps the full window, and it closes itself again once the
+  // last card is removed.
+  const showPanel = isFetchingData || dataList.length > 0;
+
   return (
-    <div className="app-shell" id="top">
-      <Header />
+    <div className="app-shell">
+      <StationMap stations={stations} onStationSelect={setSelectedStation} />
 
-      <main className="main">
-        <section className="wrap hero">
-          <p className="eyebrow">
-            <span className="eyebrow__dot">
-              <FaFish />
-            </span>
-            Live USGS gauges · hourly weather
-          </p>
+      <Header onSearch={setStations} resultCount={stations.length} />
 
-          <h1 className="hero__title">
-            Know when the water is <em>just right</em>
-          </h1>
-
-          <p className="hero__lede">
-            Casting Clock pulls live streamflow straight from USGS gauges and
-            pairs it with on-the-water weather, then measures both against the
-            five-year seasonal normal — so you can tell a good day from a wasted
-            drive.
-          </p>
-
-          <SiteSearch onSearch={setStations} />
-
-          <ul className="hero__chips">
-            <li className="chip">
-              <FiTrendingUp aria-hidden="true" /> 5-year seasonal baselines
-            </li>
-            <li className="chip">
-              <FiClock aria-hidden="true" /> Hourly flow &amp; height
-            </li>
-            <li className="chip">
-              <FiSunrise aria-hidden="true" /> Wind, pressure &amp; precip
-            </li>
-          </ul>
-        </section>
-
-        <section className="wrap section" id="map">
-          <div className="section__head">
-            <h2 className="section__title">
-              <FiMap aria-hidden="true" />
-              Find your water
-            </h2>
-            <p className="section__hint">
-              Click a pin, then “Fetch Data” to add it below.
-            </p>
-          </div>
-
-          <StationMap stations={stations} onStationSelect={setSelectedStation} />
-        </section>
-
-        <section className="wrap section" id="readings">
-          <div className="section__head">
-            <h2 className="section__title">
+      {showPanel && (
+        <aside className="readings-panel" aria-label="Tracked readings">
+          <div className="readings-panel__head">
+            <h2 className="readings-panel__title">
               <FiTrendingUp aria-hidden="true" />
-              Your readings
+              Readings
             </h2>
             {isFetchingData ? (
               <p className="loading-banner">
                 <span className="spinner" aria-hidden="true" />
-                Fetching data…
+                Fetching…
               </p>
             ) : (
-              dataList.length > 0 && (
-                <p className="section__hint">
-                  {dataList.length} spot{dataList.length === 1 ? '' : 's'} being
-                  tracked
-                </p>
-              )
+              <p className="hint-text">
+                {dataList.length} spot{dataList.length === 1 ? '' : 's'}
+              </p>
             )}
           </div>
 
-          <div className="readings">
-            {isFetchingData && <SkeletonReading />}
+          <div className="readings-panel__body">
+            <div className="readings">
+              {isFetchingData && <SkeletonReading />}
 
-            {!isFetchingData && dataList.length === 0 && (
-              <div className="empty">
-                <span className="empty__icon">
-                  <FaFish />
-                </span>
-                <h3>No readings yet</h3>
-                <p>
-                  Search a state, drop onto a gauge, and its flow, height and
-                  weather will stack up here — newest first.
-                </p>
-              </div>
-            )}
-
-            {dataList.map((item) => {
-              return (
-                <Results
-                  onDelete={deleteItem}
-                  key={item.id}
-                  id={item.id}
-                  stationName={item.stationName}
-                  stationNumber={item.stationNumber}
-                  cFlow={item.past1HourFlowValueMean}
-                  cHeight={item.past1HourHeightValueMean}
-                  waterTempF={item.waterTempF}
-                  waterTempC={item.waterTempC}
-                  mFlow={item.monthFlowValueMean}
-                  mHeight={item.monthHeightValueMean}
-                  sFlow={item.seasonFlowValueMean}
-                  sHeight={item.seasonHeightValueMean}
-                  tempF={item.tempF}
-                  feelsLike={item.feelsLike}
-                  feelsLikeC={item.feelsLikeC}
-                  tempC={item.tempC}
-                  hum={item.hum}
-                  precip={item.precip}
-                  pressure={item.pressure}
-                  weatherCode={item.weatherCode}
-                  windDir={item.windDir}
-                  windSpeed={item.windSpeed}
-                  windGust={item.windGust}
-                />
-              );
-            })}
+              {dataList.map((item) => {
+                return (
+                  <Results
+                    onDelete={deleteItem}
+                    key={item.id}
+                    id={item.id}
+                    stationName={item.stationName}
+                    stationNumber={item.stationNumber}
+                    cFlow={item.past1HourFlowValueMean}
+                    cHeight={item.past1HourHeightValueMean}
+                    waterTempF={item.waterTempF}
+                    waterTempC={item.waterTempC}
+                    mFlow={item.monthFlowValueMean}
+                    mHeight={item.monthHeightValueMean}
+                    sFlow={item.seasonFlowValueMean}
+                    sHeight={item.seasonHeightValueMean}
+                    tempF={item.tempF}
+                    feelsLike={item.feelsLike}
+                    feelsLikeC={item.feelsLikeC}
+                    tempC={item.tempC}
+                    hum={item.hum}
+                    precip={item.precip}
+                    pressure={item.pressure}
+                    weatherCode={item.weatherCode}
+                    windDir={item.windDir}
+                    windSpeed={item.windSpeed}
+                    windGust={item.windGust}
+                  />
+                );
+              })}
+            </div>
           </div>
-        </section>
-      </main>
-
-      <Footer />
+        </aside>
+      )}
     </div>
   );
 }

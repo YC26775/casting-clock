@@ -2,7 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { FiAlertCircle, FiSearch } from 'react-icons/fi';
 
-function SiteSearch({ onSearch }) {
+function SiteSearch({ onSearch, resultCount = 0 }) {
   const stateCodes = {
     alabama: 'AL',
     alaska: 'AK',
@@ -181,9 +181,13 @@ function SiteSearch({ onSearch }) {
             <FiAlertCircle aria-hidden="true" />
             {error}
           </p>
+        ) : resultCount > 0 ? (
+          <p className="search__hint">
+            {resultCount.toLocaleString()} gauges on the map — click a pin
+          </p>
         ) : (
           <p className="search__hint">
-            Every USGS stream gauge in the state lands on the map below.
+            Every USGS stream gauge in the state lands on the map
           </p>
         )}
       </div>

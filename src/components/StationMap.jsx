@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  ZoomControl,
+  useMap,
+} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../styles/style.css';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
@@ -46,6 +53,27 @@ const BASEMAPS = {
   },
 };
 
+/*
+ * The map now lives in a fluid, absolutely-positioned container instead of a
+ * fixed-height box, so its element can change size (window resize, the
+ * readings panel opening as a mobile bottom sheet, a font swap nudging
+ * layout) without the browser ever firing a plain 'resize' event. Leaflet
+ * only repaints on that event, so without this it keeps rendering tiles for
+ * whatever size it was born at. A ResizeObserver catches every case.
+ */
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
+
 function FitBounds({ stations }) {
   const map = useMap();
 
@@ -63,19 +91,74 @@ function FitBounds({ stations }) {
 }
 
 function StationMap({ stations, onStationSelect }) {
-  const [mapPosition, setMapPosition] = useState([37.8, -96.9]);
+  const [mapPosition] = useState([37.8, -96.9]);
   const [basemap, setBasemap] = useState('topo');
 
   return (
-    <div className="card map-card">
-      <div className="map-card__head">
-        <p className="map-card__label">
-          <FiMapPin aria-hidden="true" />
-          {stations.length > 0
-            ? `${stations.length.toLocaleString()} gauges on the map`
-            : 'No gauges loaded yet'}
-        </p>
+    <div className="map-canvas">
+      <MapContainer
+        center={mapPosition}
+        zoom={4}
+        scrollWheelZoom={true}
+        zoomControl={false}
+      >
+        <TileLayer
+          key={basemap}
+          url={BASEMAPS[basemap].url}
+          attribution="Tiles &copy; <a href='https://www.usgs.gov/'>USGS</a> The National Map"
+        />
+        {/* Default zoom control lives top-left, right under the search box —
+            move it out of the way. */}
+        <ZoomControl position="bottomleft" />
+        <MapResizeHandler />
+        <FitBounds stations={stations} />
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={50}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={false}
+          iconCreateFunction={(cluster) => {
+            return L.divIcon({
+              html: `<div class="custom-cluster">${cluster.getChildCount()}</div>`,
+              className: 'marker-cluster',
+              iconSize: L.point(40, 40),
+            });
+          }}
+        >
+          {stations.map((station) => (
+            // No hover handler here on purpose — the popup should only ever
+            // open on a deliberate click, not while the cursor passes by.
+            <Marker
+              key={station.site_no}
+              position={[station.dec_lat_va, station.dec_long_va]}
+              icon={stationPin}
+            >
+              <Popup>
+                <div className="station-popup">
+                  <div>
+                    <p className="station-popup__name">{station.station_nm}</p>
+                    <p className="station-popup__meta">
+                      Gauge #{station.site_no}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() => {
+                      onStationSelect(station);
+                      console.log('station is selected.');
+                    }}
+                  >
+                    Fetch Data
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
+      </MapContainer>
 
+      <div className="map-controls">
         <div className="seg" role="group" aria-label="Basemap style">
           {Object.entries(BASEMAPS).map(([key, { label }]) => (
             <button
@@ -91,81 +174,20 @@ function StationMap({ stations, onStationSelect }) {
         </div>
       </div>
 
-      <div className="map-frame">
-        <MapContainer center={mapPosition} zoom={4} scrollWheelZoom={true}>
-          <TileLayer
-            key={basemap}
-            url={BASEMAPS[basemap].url}
-            attribution="Tiles &copy; <a href='https://www.usgs.gov/'>USGS</a> The National Map"
-          />
-          <FitBounds stations={stations} />
-          <MarkerClusterGroup
-            chunkedLoading
-            maxClusterRadius={50}
-            spiderfyOnMaxZoom={true}
-            showCoverageOnHover={false}
-            iconCreateFunction={(cluster) => {
-              return L.divIcon({
-                html: `<div class="custom-cluster">${cluster.getChildCount()}</div>`,
-                className: 'marker-cluster',
-                iconSize: L.point(40, 40),
-              });
-            }}
-          >
-            {stations.map((station) => (
-              <Marker
-                key={station.site_no}
-                position={[station.dec_lat_va, station.dec_long_va]}
-                icon={stationPin}
-                eventHandlers={{
-                  mouseover: (e) => e.target.openPopup(),
-                  click: (e) => {
-                    e.target.openPopup();
-                  },
-                }}
-              >
-                <Popup>
-                  <div className="station-popup">
-                    <div>
-                      <p className="station-popup__name">
-                        {station.station_nm}
-                      </p>
-                      <p className="station-popup__meta">
-                        Gauge #{station.site_no}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn--sm"
-                      onClick={() => {
-                        onStationSelect(station);
-                        console.log('station is selected.');
-                      }}
-                    >
-                      Fetch Data
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MarkerClusterGroup>
-        </MapContainer>
-
-        {stations.length === 0 && (
-          <div className="map-overlay">
-            <div className="map-overlay__inner">
-              <span className="map-overlay__icon">
-                <FiMapPin />
-              </span>
-              <strong>Pick a state to begin</strong>
-              <p>
-                Search above, then click any pin and hit “Fetch Data” to pull its
-                flow and weather.
-              </p>
-            </div>
+      {stations.length === 0 && (
+        <div className="map-overlay">
+          <div className="map-overlay__inner">
+            <span className="map-overlay__icon">
+              <FiMapPin />
+            </span>
+            <strong>Pick a state to begin</strong>
+            <p>
+              Search top-left, then click any pin and hit “Fetch Data” to pull
+              its flow and weather.
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
