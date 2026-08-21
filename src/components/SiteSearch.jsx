@@ -56,7 +56,7 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
     wyoming: 'WY',
   };
   const STATE_STATIONS_API =
-    'https://waterservices.usgs.gov/nwis/site/?siteType=ST&hasDataTypeCd=iv';
+    'https://waterservices.usgs.gov/nwis/site/?siteType=ST&hasDataTypeCd=iv&siteOutput=expanded';
 
   const [isLoading, setIsLoading] = useState(false);
   const [state, setState] = useState('');
@@ -75,7 +75,7 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
     try {
       console.log(`state code ${stateCodes[searchText]}`);
       const stationResult = await fetchStation(stateCodes[searchText]);
-      onSearch(stationResult);
+      onSearch(stationResult ?? []);
     } catch (error) {
       console.log(`Error:${error}`);
     }
@@ -88,7 +88,7 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
           stateCd: code,
         },
       });
-      return parseRDB(response.data);
+      return toStations(parseRDB(response.data));
     } catch (error) {
       console.error('fetchStation API Error:', error);
       setError('Error fetching station data');
@@ -96,6 +96,12 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
       setIsLoading(false);
     }
   };
+  /*
+   * Every column stays a string here. Site numbers are zero-padded ids, not
+   * quantities — running them through parseFloat turned '01334000' into
+   * 1334000 and lost the leading zero, so anything that needed the real id
+   * had to guess it back.
+   */
   const parseRDB = (rdbText) => {
     const lines = rdbText.split('\n');
     const results = [];
@@ -106,11 +112,10 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
       if (line.startsWith('#') || line.trim() === '') {
         continue;
       }
-      const parts = line
-        .split('\t')
-        .map((part) => (part.trim() === '' ? undefined : part));
-      if (headers.length === 0 && parts.length > 0) {
-        headers = parts;
+      const parts = line.split('\t');
+      if (headers.length === 0) {
+        headers = parts.map((part) => part.trim());
+        // The row after the header holds column widths, not data.
         skipNextLine = true;
         continue;
       }
@@ -118,18 +123,47 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
         skipNextLine = false;
         continue;
       }
-      if (parts.length > 0) {
-        const obj = {};
-        headers.forEach((header, index) => {
-          let value = parts[index]?.trim();
-          obj[header] = isNaN(value) ? value : parseFloat(value);
-        });
-        results.push(obj);
-      } else {
-      }
+
+      const row = {};
+      headers.forEach((header, index) => {
+        const value = parts[index]?.trim();
+        row[header] = value === '' ? undefined : value;
+      });
+      results.push(row);
     }
     return results;
   };
+
+  /*
+   * Not every row USGS returns is mappable:
+   *
+   *  - A few carry no coordinates at all (Alaska's 15238950 is one). Leaflet
+   *    throws on the first bad LatLng and takes the whole render down with it,
+   *    so one empty row used to blank the page for the other 285 gauges.
+   *  - A handful of transboundary gauges are filed under a US state_cd while
+   *    country_cd says 'CA' — that is how Canadian gauges surfaced in searches
+   *    for Alabama, Delaware and Alaska.
+   *
+   * Both get dropped here so nothing downstream has to defend against them.
+   */
+  const toStations = (rows) =>
+    rows.reduce((stations, row) => {
+      const lat = Number(row.dec_lat_va);
+      const long = Number(row.dec_long_va);
+
+      if (!row.site_no) return stations;
+      if (!Number.isFinite(lat) || !Number.isFinite(long)) return stations;
+      if (Math.abs(lat) > 90 || Math.abs(long) > 180) return stations;
+      if (row.country_cd && row.country_cd !== 'US') return stations;
+
+      stations.push({
+        site_no: row.site_no,
+        station_nm: row.station_nm ?? `Gauge ${row.site_no}`,
+        dec_lat_va: lat,
+        dec_long_va: long,
+      });
+      return stations;
+    }, []);
 
   const titleCase = (name) =>
     name.replace(/\b\w/g, (letter) => letter.toUpperCase());

@@ -198,7 +198,7 @@ function Results({
           <div>
             <h3 className="reading__name">{stationName}</h3>
             <div className="reading__meta">
-              <span className="chip chip--mono">Gauge 0{stationNumber}</span>
+              <span className="chip chip--mono">Gauge {stationNumber}</span>
               <span className="chip">
                 {month} · {season}
               </span>

@@ -86,12 +86,19 @@ function getVisibleInsets() {
   const panel = document.querySelector('.readings-panel');
 
   const top = hud ? Math.round(hud.getBoundingClientRect().bottom) + 16 : 70;
+
+  // The same panel is a bottom sheet on narrow screens and a right-hand
+  // sidebar on wide ones, so it eats a different edge in each layout.
   const bottom =
     isSheetLayout && panel
       ? Math.round(panel.getBoundingClientRect().height) + 16
       : 30;
+  const right =
+    !isSheetLayout && panel
+      ? Math.round(panel.getBoundingClientRect().width) + 16
+      : 30;
 
-  return { top, bottom };
+  return { top, bottom, right };
 }
 
 function FitBounds({ stations }) {
@@ -100,14 +107,17 @@ function FitBounds({ stations }) {
   useEffect(() => {
     if (!map || stations.length === 0) return;
 
-    const bounds = L.latLngBounds(
-      stations.map((station) => [station.dec_lat_va, station.dec_long_va])
-    );
+    const points = stations
+      .map((station) => [Number(station.dec_lat_va), Number(station.dec_long_va)])
+      .filter(([lat, long]) => Number.isFinite(lat) && Number.isFinite(long));
+    if (points.length === 0) return;
 
-    const { top, bottom } = getVisibleInsets();
+    const bounds = L.latLngBounds(points);
+
+    const { top, bottom, right } = getVisibleInsets();
     map.fitBounds(bounds, {
       paddingTopLeft: [30, top],
-      paddingBottomRight: [30, bottom],
+      paddingBottomRight: [right, bottom],
       maxZoom: 7,
     });
   }, [map, stations]);
@@ -150,39 +160,49 @@ function StationMap({ stations, onStationSelect }) {
             });
           }}
         >
-          {stations.map((station) => (
-            // No hover handler here on purpose — the popup should only ever
-            // open on a deliberate click, not while the cursor passes by.
-            <Marker
-              key={station.site_no}
-              position={[station.dec_lat_va, station.dec_long_va]}
-              icon={stationPin}
-            >
-              <Popup
-                autoPanPaddingTopLeft={[16, 150]}
-                autoPanPaddingBottomRight={[16, 24]}
+          {stations
+            .filter(
+              (station) =>
+                Number.isFinite(Number(station.dec_lat_va)) &&
+                Number.isFinite(Number(station.dec_long_va))
+            )
+            .map((station) => (
+              // No hover handler here on purpose — the popup should only ever
+              // open on a deliberate click, not while the cursor passes by.
+              <Marker
+                key={station.site_no}
+                position={[
+                  Number(station.dec_lat_va),
+                  Number(station.dec_long_va),
+                ]}
+                icon={stationPin}
               >
-                <div className="station-popup">
-                  <div>
-                    <p className="station-popup__name">{station.station_nm}</p>
-                    <p className="station-popup__meta">
-                      Gauge #{station.site_no}
-                    </p>
+                <Popup
+                  autoPanPaddingTopLeft={[16, 150]}
+                  autoPanPaddingBottomRight={[16, 24]}
+                >
+                  <div className="station-popup">
+                    <div>
+                      <p className="station-popup__name">
+                        {station.station_nm}
+                      </p>
+                      <p className="station-popup__meta">
+                        Gauge #{station.site_no}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn--sm"
+                      onClick={() => {
+                        onStationSelect(station);
+                      }}
+                    >
+                      Fetch Data
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn--sm"
-                    onClick={() => {
-                      onStationSelect(station);
-                      console.log('station is selected.');
-                    }}
-                  >
-                    Fetch Data
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                </Popup>
+              </Marker>
+            ))}
         </MarkerClusterGroup>
       </MapContainer>
 

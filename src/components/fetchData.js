@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 export async function fetchData(sta, lat, long) {
-  const station = `0${sta}`;
+  // site_no arrives as the real USGS id now, so it goes through untouched.
+  // It used to be re-prefixed with '0' to undo parseFloat stripping the
+  // leading zero, which silently broke every id that starts with anything
+  // else — a quarter of the country, all of it west of the Mississippi.
+  const station = String(sta).trim();
   const fetchCurrentStreamData = async () => {
     try {
       const API_URL_Current_Stream =
