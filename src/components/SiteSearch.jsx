@@ -155,7 +155,7 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
           autoComplete="off"
           onChange={handleChange}
           value={state}
-          placeholder="Search a state — try “Montana”"
+          placeholder="Search a state"
           aria-invalid={error ? 'true' : 'false'}
         />
         <datalist id="state-options">
@@ -183,12 +183,10 @@ function SiteSearch({ onSearch, resultCount = 0 }) {
           </p>
         ) : resultCount > 0 ? (
           <p className="search__hint">
-            {resultCount.toLocaleString()} gauges on the map — click a pin
+            {resultCount.toLocaleString()} gauges on the map — pick a pin
           </p>
         ) : (
-          <p className="search__hint">
-            Every USGS stream gauge in the state lands on the map
-          </p>
+          <p className="search__hint">Try “Montana” or “Vermont”</p>
         )}
       </div>
     </div>

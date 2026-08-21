@@ -53,6 +53,17 @@
   --font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
     Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Outfit', var(--font-ui);
+
+  /* Notch / home-indicator insets. Zero everywhere except on hardware that
+     actually reports them, so they are safe to add unconditionally. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
+  /* Bottom-sheet geometry (mobile/tablet only — see the responsive block). */
+  --sheet-peek: calc(74px + var(--safe-b));
+  --sheet-max: calc(100dvh - 72px - var(--safe-t));
 }
 
 :root[data-theme='dark'] {
@@ -102,6 +113,9 @@ body {
   /* The map is the whole app now — nothing behind it should ever scroll. */
   overflow: hidden;
   overscroll-behavior: none;
+  /* Grey flash on every tap reads as jank on a phone; the components all have
+     their own :active states. */
+  -webkit-tap-highlight-color: transparent;
   font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.55;
@@ -187,7 +201,8 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
+  padding: calc(16px + var(--safe-t)) calc(16px + var(--safe-r)) 16px
+    calc(16px + var(--safe-l));
   pointer-events: none;
 }
 
@@ -271,6 +286,16 @@ button {
 
 .icon-btn:active {
   transform: translateY(0) scale(0.96);
+}
+
+/* 38px is comfortable with a cursor but under the ~44px finger target, so
+   grow every icon button on touch hardware rather than at a width guess. */
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+  }
 }
 
 .icon-btn--danger:hover {
@@ -502,8 +527,10 @@ button {
 }
 
 .map-controls {
-  position: fixed;
-  left: 20px;
+  /* Absolute, not fixed: it belongs to the map canvas, so it keeps its place
+     if the shell is ever nested or transformed. */
+  position: absolute;
+  left: calc(20px + var(--safe-l));
   top: 190px;
   z-index: 400;
   pointer-events: auto;
@@ -511,12 +538,12 @@ button {
 
 .seg {
   display: inline-flex;
-  padding: 6px;
+  padding: 4px;
   gap: 3px;
   border-radius: var(--r-pill);
   background: var(--surface);
-  border: 2px solid var(--text-2);
-  box-shadow: 0 6px 20px rgba(8, 34, 42, 0.4);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
 .seg__btn {
@@ -660,6 +687,14 @@ button {
   border: 0;
 }
 
+/* The teardrop is 26x34 — fine for a cursor, tight for a fingertip. This
+   invisible cushion widens the hit area without nudging the anchor point. */
+.pin-marker::after {
+  content: '';
+  position: absolute;
+  inset: -9px -11px -5px;
+}
+
 .pin-marker svg {
   display: block;
   width: 26px;
@@ -726,6 +761,10 @@ button {
   }
 }
 
+.sheet-handle {
+  display: none;
+}
+
 .readings-panel__head {
   flex: none;
   display: flex;
@@ -755,10 +794,12 @@ button {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 18px 20px 28px;
+  padding: 18px 20px calc(28px + var(--safe-b));
   /* A step darker than the white cards it holds, so each reading's edges
      read clearly instead of blending into the panel. */
   background: var(--surface-2);
+  /* Keep momentum scrolling inside the sheet instead of dragging the page. */
+  -webkit-overflow-scrolling: touch;
   /* Lets .reading__body switch to a side-by-side layout once there is
      actually enough room, regardless of viewport size. */
   container-type: inline-size;
@@ -1241,7 +1282,6 @@ button {
   position: absolute;
   top: 16px;
   right: 16px;
-  pointer-events: auto;
   z-index: 10;
 }
 
@@ -1290,8 +1330,6 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  pointer-events: auto;
-  cursor: pointer;
 }
 
 .footer__links a:hover {
@@ -1304,77 +1342,223 @@ button {
 
 @media (max-width: 1100px) {
   /* An 800px sidebar has no business on a laptop-width screen — the panel
-     becomes a bottom sheet instead, so the map stays reachable above it. */
+     becomes a drag-to-resize bottom sheet instead, so the map stays reachable
+     above it and the reader decides how much room the data gets. */
   .readings-panel {
     inset: auto 0 0 0;
     width: auto;
-    height: min(58vh, 560px);
+    height: var(--sheet-h, 55dvh);
+    max-height: var(--sheet-max);
     border-left: 0;
     border-top: 1px solid var(--border);
     border-radius: var(--r-lg) var(--r-lg) 0 0;
+    transition: height 0.3s var(--ease);
   }
 
-  .readings-panel::before {
-    content: '';
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    width: 36px;
+  /* Snap points. App.jsx writes an inline --sheet-h while a drag is live,
+     which outranks these; releasing the finger clears it and the nearest
+     snap below takes over with a transition. */
+  .readings-panel[data-sheet='peek'] {
+    --sheet-h: var(--sheet-peek);
+  }
+
+  .readings-panel[data-sheet='half'] {
+    --sheet-h: 55dvh;
+  }
+
+  .readings-panel[data-sheet='full'] {
+    --sheet-h: var(--sheet-max);
+  }
+
+  .readings-panel[data-dragging='true'] {
+    transition: none;
+  }
+
+  .sheet-handle {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 100%;
+    /* Tall enough to grab without aiming — the visible bar is only 4px. */
+    height: 26px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: grab;
+    /* Claim the vertical gesture so the browser does not try to scroll. */
+    touch-action: none;
+  }
+
+  .sheet-handle:active {
+    cursor: grabbing;
+  }
+
+  .sheet-handle__bar {
+    width: 40px;
     height: 4px;
     border-radius: var(--r-pill);
     background: var(--border-strong);
-    transform: translateX(-50%);
+    transition: background var(--dur) var(--ease), width var(--dur) var(--ease);
   }
 
+  .sheet-handle:hover .sheet-handle__bar,
+  .sheet-handle:focus-visible .sheet-handle__bar {
+    background: var(--brand);
+    width: 52px;
+  }
+
+  .readings-panel__head {
+    /* The floating HUD buttons are up at the top of the screen, nowhere near
+       the sheet — the sidebar's clearance reservation would just waste width. */
+    padding: 4px 20px 14px;
+  }
+
+  /* Peeked, the body is clipped away; hide the scrollbar flash that causes. */
+  .readings-panel[data-sheet='peek'] .readings-panel__body {
+    overflow: hidden;
+  }
+
+  /* Lift Leaflet's own corners clear of the sheet, but only while a sheet is
+     actually on screen. */
+  .map-canvas:has(~ .readings-panel) .leaflet-bottom {
+    bottom: var(--sheet-peek);
+    transition: bottom 0.3s var(--ease);
+  }
+
+  /* The whole top of a narrow screen belongs to the search, so the basemap
+     switcher drops to the bottom-left corner the zoom buttons just vacated. */
   .map-controls {
-    left: auto;
-    right: 16px;
-    bottom: auto;
-    top: 66px;
+    left: calc(16px + var(--safe-l));
+    right: auto;
+    top: auto;
+    bottom: calc(30px + var(--safe-b));
+    transition: bottom 0.3s var(--ease);
+  }
+
+  .map-canvas:has(~ .readings-panel) .map-controls {
+    bottom: calc(var(--sheet-peek) + 12px);
+  }
+}
+
+/* Pinch-zoom is the native gesture on touch hardware and Leaflet's +/- buttons
+   only compete with the sheet for the bottom-left corner. */
+@media (max-width: 1100px) and (pointer: coarse) {
+  .leaflet-control-zoom {
+    display: none;
   }
 }
 
 @media (max-width: 640px) {
   .hud {
-    padding: 12px;
+    padding: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) 12px
+      calc(12px + var(--safe-l));
+    gap: 10px;
+  }
+
+  /* Sharing a row with the icon buttons left the search ~245px wide and
+     clipping its own placeholder. Promote it to a row of its own: `display:
+     contents` lets .hud__left's children become grid items of .hud directly,
+     so brand and search can sit in different rows without new markup. */
+  .hud {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'brand  .      actions'
+      'search search search';
+    align-content: start;
   }
 
   .hud__left {
-    width: calc(100vw - 24px);
+    display: contents;
+  }
+
+  .brand-chip {
+    grid-area: brand;
+  }
+
+  .search {
+    grid-area: search;
+  }
+
+  .hud__right {
+    grid-area: actions;
   }
 
   .brand-chip__name {
     display: none;
   }
 
+  .brand-chip {
+    padding: 5px;
+  }
+
+  /* One row, not two: a wrapped search form was eating well over half the
+     screen before the map got a look in. */
   .search__form {
-    flex-wrap: wrap;
-    border-radius: var(--r-lg);
-    padding: 10px;
-    gap: 6px;
+    padding: 5px 5px 5px 12px;
+    gap: 4px;
   }
 
   .search__icon {
-    padding-left: 8px;
+    font-size: 1rem;
   }
 
   .search__input {
-    flex: 1 1 60%;
+    font-size: 1rem; /* keep >=16px or iOS zooms the whole page on focus */
+    padding: 10px 2px;
+    min-width: 0;
   }
 
   .search__form .btn {
-    flex: 1 1 100%;
+    padding: 10px 16px;
+    font-size: 0.88rem;
   }
 
+  .search__foot {
+    min-height: 0;
+    margin-top: 6px;
+  }
+
+  .search__hint,
+  .search__error {
+    font-size: 0.75rem;
+    padding: 3px 11px;
+  }
+
+  /* Two up still beats one on a phone — these tiles are short and wide. */
   .stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 10px;
   }
 
-  /* Below this width the search box in .hud__left goes near full-bleed and
-     would sit on top of the basemap toggle — drop the secondary control
-     rather than fight it for space. */
-  .map-controls {
-    display: none;
+  .metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .readings-panel__body {
+    padding: 14px 12px calc(24px + var(--safe-b));
+  }
+
+  .readings {
+    gap: 12px;
+  }
+
+  .reading__head,
+  .panel {
+    padding: 16px;
+  }
+
+  .modal-backdrop {
+    /* Meet the sheet metaphor: the dialog rises from the bottom edge. */
+    place-items: end center;
+    padding: 12px calc(12px + var(--safe-r)) calc(12px + var(--safe-b))
+      calc(12px + var(--safe-l));
+  }
+
+  .modal {
+    width: 100%;
+    max-height: 85dvh;
+    padding: 24px 20px calc(20px + var(--safe-b));
   }
 }
 

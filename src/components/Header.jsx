@@ -28,45 +28,53 @@ function Header({ onSearch, resultCount }) {
   }, [theme]);
 
   return (
-    <div className="hud">
-      <div className="hud__left">
-        <div className="brand-chip">
-          <span className="brand__mark" aria-hidden="true">
-            <FaFish />
-          </span>
-          <span className="brand-chip__name">Casting Clock</span>
+    <>
+      <div className="hud">
+        <div className="hud__left">
+          <div className="brand-chip">
+            <span className="brand__mark" aria-hidden="true">
+              <FaFish />
+            </span>
+            <span className="brand-chip__name">Casting Clock</span>
+          </div>
+
+          <SiteSearch onSearch={onSearch} resultCount={resultCount} />
         </div>
 
-        <SiteSearch onSearch={onSearch} resultCount={resultCount} />
+        <div className="hud__right">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setInfoOpen(true)}
+            aria-label="About Casting Clock"
+            title="About Casting Clock"
+          >
+            <FiInfo />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+            aria-label={
+              theme === 'dark'
+                ? 'Switch to light theme'
+                : 'Switch to dark theme'
+            }
+            title={
+              theme === 'dark'
+                ? 'Switch to light theme'
+                : 'Switch to dark theme'
+            }
+          >
+            {theme === 'dark' ? <FiSun /> : <FiMoon />}
+          </button>
+        </div>
       </div>
 
-      <div className="hud__right">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setInfoOpen(true)}
-          aria-label="About Casting Clock"
-          title="About Casting Clock"
-        >
-          <FiInfo />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-          aria-label={
-            theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
-          }
-          title={
-            theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
-          }
-        >
-          {theme === 'dark' ? <FiSun /> : <FiMoon />}
-        </button>
-      </div>
-
+      {/* Outside .hud on purpose: that row sets pointer-events:none for the
+          map underneath it, which any dialog nested inside would inherit. */}
       <InfoDialog open={infoOpen} onClose={() => setInfoOpen(false)} />
-    </div>
+    </>
   );
 }
 

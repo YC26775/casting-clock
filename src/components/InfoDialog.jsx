@@ -45,9 +45,9 @@ function InfoDialog({ open, onClose }) {
         <p className="modal__lede">
           Casting Clock pulls live streamflow straight from USGS gauges and
           pairs it with on-the-water weather, then measures both against the
-          five-year seasonal normal — so you can tell a good day from a
-          wasted drive. Search a state, drop a pin on any gauge, and its
-          flow, height and weather stack up in the panel on the right.
+          five-year seasonal normal — so you can tell a good day from a wasted
+          drive. Search a state, pick any gauge on the map, and its flow,
+          height and weather stack up in the readings panel.
         </p>
 
         <div className="modal__footer">

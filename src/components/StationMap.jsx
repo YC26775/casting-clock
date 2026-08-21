@@ -74,6 +74,26 @@ function MapResizeHandler() {
   return null;
 }
 
+/*
+ * How much of the map is hidden behind floating chrome. On a phone that is the
+ * search HUD up top and the readings sheet along the bottom, which between
+ * them can cover most of the screen — fitting to the raw viewport would drop
+ * half the pins underneath them.
+ */
+function getVisibleInsets() {
+  const isSheetLayout = window.matchMedia('(max-width: 1100px)').matches;
+  const hud = document.querySelector('.hud__left');
+  const panel = document.querySelector('.readings-panel');
+
+  const top = hud ? Math.round(hud.getBoundingClientRect().bottom) + 16 : 70;
+  const bottom =
+    isSheetLayout && panel
+      ? Math.round(panel.getBoundingClientRect().height) + 16
+      : 30;
+
+  return { top, bottom };
+}
+
 function FitBounds({ stations }) {
   const map = useMap();
 
@@ -84,7 +104,12 @@ function FitBounds({ stations }) {
       stations.map((station) => [station.dec_lat_va, station.dec_long_va])
     );
 
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 7 });
+    const { top, bottom } = getVisibleInsets();
+    map.fitBounds(bounds, {
+      paddingTopLeft: [30, top],
+      paddingBottomRight: [30, bottom],
+      maxZoom: 7,
+    });
   }, [map, stations]);
 
   return null;
@@ -133,7 +158,10 @@ function StationMap({ stations, onStationSelect }) {
               position={[station.dec_lat_va, station.dec_long_va]}
               icon={stationPin}
             >
-              <Popup>
+              <Popup
+                autoPanPaddingTopLeft={[16, 150]}
+                autoPanPaddingBottomRight={[16, 24]}
+              >
                 <div className="station-popup">
                   <div>
                     <p className="station-popup__name">{station.station_nm}</p>
